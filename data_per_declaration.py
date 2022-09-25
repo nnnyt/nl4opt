@@ -21,25 +21,30 @@ class DeclarationMappingDataset(LPMappingDataset):
             document = content['document']
             order_mapping = content['order_mapping']
 
-            orig_input_ids = tokenizer([document], max_length=self.max_length, truncation=True)['input_ids'][0]
+            # orig_input_ids = tokenizer([document], max_length=self.max_length, truncation=True)['input_ids'][0]
 
             decoder_input_chunks = self.create_decoder_input_chunks(content, tokenizer)
-            const_triggers = [START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
-            obj_triggers = [START_OF_OBJ_DIR + " " + x['text'].strip(" ") + " " + END_OF_OBJ_DIR for x in content['spans'] if x['label'] == 'OBJ_DIR' and 'text' in x]
+            # const_triggers = [START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
+            # obj_triggers = [START_OF_OBJ_DIR + " " + x['text'].strip(" ") + " " + END_OF_OBJ_DIR for x in content['spans'] if x['label'] == 'OBJ_DIR' and 'text' in x]
 
-            triggers = [tokenizer.encode(x)[1:-1] for x in obj_triggers + const_triggers]
+            const_triggers = [document[:x['start']] + " " + START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR + document[x['end']:] for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
+            obj_triggers = [document[:x['start']] + " " + START_OF_OBJ_DIR + " " + x['text'].strip(" ") + " " + END_OF_OBJ_DIR + document[x['end']:] for x in content['spans'] if x['label'] == 'OBJ_DIR' and 'text' in x]
+            # triggers = [tokenizer.encode(x)[1:-1] for x in obj_triggers + const_triggers]
+            triggers = [tokenizer([x], max_length=self.max_length, truncation=True)['input_ids'][0] for x in obj_triggers + const_triggers]
 
             # print("decoder_input_chunks", decoder_input_chunks)
 
             for decoder_input, trigger in zip(decoder_input_chunks, triggers):
 
                 # Declaration prompt trigger
-                decl_trigger = trigger
+                # decl_trigger = trigger
                 # TODO: wrap the trigger in <s>TRIGGER</s>
                 # decl_trigger = [tokenizer.bos_token_id] + decoder_input[0] + [tokenizer.eos_token_id]
-                pad_num = self.max_length - len(decl_trigger) - len(orig_input_ids)
-                attn_mask = [1] * (len(decl_trigger) + len(orig_input_ids)) + [0] * pad_num
-                input_ids = decl_trigger + orig_input_ids + [tokenizer.pad_token_id] * pad_num
+                # pad_num = self.max_length - len(decl_trigger) - len(orig_input_ids)
+                pad_num = self.max_length - len(trigger)
+                attn_mask = [1] * len(trigger) + [0] * pad_num
+                # input_ids = decl_trigger + orig_input_ids + [tokenizer.pad_token_id] * pad_num
+                input_ids = trigger + [tokenizer.pad_token_id] * pad_num
 
                 assert len(input_ids) == self.max_length, len(input_ids)
                 input_tokens = tokenizer.decode(input_ids)
