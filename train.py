@@ -62,6 +62,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name,
                                           cache_dir=config.bert_cache_dir)
 
 tokenizer.add_tokens(SPECIAL_TOKENS)
+print(SPECIAL_TOKENS)
 
 if config.per_declaration:
     print('==============Prepare Training Set=================')

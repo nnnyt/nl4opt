@@ -23,6 +23,25 @@ class DeclarationMappingDataset(LPMappingDataset):
 
             orig_input_ids = tokenizer([document], max_length=self.max_length, truncation=True)['input_ids'][0]
 
+            pos = []
+            pp=0
+            while 1:
+                p = document.find('.', pp+1)
+                if p != -1:
+                    pp = p
+                    pos.append(p)
+                else:
+                    break
+            pos = [0] + pos + [len(document)]
+            flag = [0 for _ in range(len(pos)-1)]
+            for s in content['spans']:
+                if s['label'] == 'OBJ_NAME' or s['label'] == 'OBJ_DIR':
+                    for i in range(len(pos)-1):
+                        if s['start'] >= pos[i] and s['end'] <= pos[i+1]:
+                            flag[i] = 1
+            obj_doc = '. '.join([text.strip() for i, text in enumerate(document.split('.')) if flag[i] == 1])
+            obj_input_ids = tokenizer([obj_doc], max_length=self.max_length, truncation=True)['input_ids'][0]
+
             decoder_input_chunks = self.create_decoder_input_chunks(content, tokenizer)
             const_triggers = [START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
             obj_triggers = [START_OF_OBJ_DIR + " " + x['text'].strip(" ") + " " + END_OF_OBJ_DIR for x in content['spans'] if x['label'] == 'OBJ_DIR' and 'text' in x]
@@ -31,15 +50,20 @@ class DeclarationMappingDataset(LPMappingDataset):
 
             # print("decoder_input_chunks", decoder_input_chunks)
 
-            for decoder_input, trigger in zip(decoder_input_chunks, triggers):
+            for i, (decoder_input, trigger) in enumerate(zip(decoder_input_chunks, triggers)):
 
                 # Declaration prompt trigger
                 decl_trigger = trigger
                 # TODO: wrap the trigger in <s>TRIGGER</s>
                 # decl_trigger = [tokenizer.bos_token_id] + decoder_input[0] + [tokenizer.eos_token_id]
-                pad_num = self.max_length - len(decl_trigger) - len(orig_input_ids)
-                attn_mask = [1] * (len(decl_trigger) + len(orig_input_ids)) + [0] * pad_num
-                input_ids = decl_trigger + orig_input_ids + [tokenizer.pad_token_id] * pad_num
+                if i < len(obj_triggers):
+                    pad_num = self.max_length - len(decl_trigger) - len(obj_input_ids)
+                    attn_mask = [1] * (len(decl_trigger) + len(obj_input_ids)) + [0] * pad_num
+                    input_ids = decl_trigger + obj_input_ids + [tokenizer.pad_token_id] * pad_num
+                else:
+                    pad_num = self.max_length - len(decl_trigger) - len(orig_input_ids)
+                    attn_mask = [1] * (len(decl_trigger) + len(orig_input_ids)) + [0] * pad_num
+                    input_ids = decl_trigger + orig_input_ids + [tokenizer.pad_token_id] * pad_num
 
                 assert len(input_ids) == self.max_length, len(input_ids)
                 input_tokens = tokenizer.decode(input_ids)

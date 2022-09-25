@@ -60,6 +60,19 @@ def collate_score_declarations(pred_texts: List[str],
         pred_canonicals.append(pred_canonical)
         gold_canonicals.append(gold_canonical)
 
+    print('objective accuracy: ', scoring.overall_score(
+        [None for x in pred_canonicals],
+        [x.constraints for x in pred_canonicals],
+        [None for x in gold_canonicals],
+        [x.constraints for x in gold_canonicals],
+    ))
+    print('constraint accuracy: ', scoring.overall_score(
+        [x.objective for x in pred_canonicals],
+        [[] for x in pred_canonicals],
+        [x.objective for x in gold_canonicals],
+        [[] for x in gold_canonicals],
+    ))
+
     return scoring.overall_score(
         [x.objective for x in pred_canonicals],
         [x.constraints for x in pred_canonicals],
@@ -84,7 +97,7 @@ def evaluate(tokenizer,
                          desc='{} {}'.format(tqdm_descr, ckpt_basename))
     gold_outputs, pred_outputs, input_tokens, doc_ids, documents, order_mappings = [], [], [], [], [], []
     pred_texts, gold_texts, gold_pred_pairs = [], [], []
-    metric = Rouge()
+    # metric = Rouge()
     measures = []
     for batch in DataLoader(dataset, batch_size=config.eval_batch_size,
                             shuffle=False, collate_fn=dataset.collate_fn):
@@ -103,7 +116,8 @@ def evaluate(tokenizer,
         pred_txt, gold_txt = pred_txt[3:-4], gold_txt[3:-4]
         pred_texts.append(pred_txt)
         gold_texts.append(gold_txt)
-        diff_metrics = metric.get_scores(pred_txt, gold_txt)
+        # diff_metrics = metric.get_scores(pred_txt, gold_txt)
+        diff_metrics = {}
         measures.extend(diff_metrics)
 
         gold_pred_pairs.append({
@@ -113,8 +127,13 @@ def evaluate(tokenizer,
             "rouge": diff_metrics
         })
     progress.close()
-    accuracy = collate_score_declarations(pred_texts, gold_texts,doc_ids,order_mappings, print_errors)
-    avg_metric = metric.get_scores(pred_texts, gold_texts, avg=True)
+    try:
+        accuracy = collate_score_declarations(pred_texts, gold_texts,doc_ids,order_mappings, print_errors)
+    except:
+        accuracy = 0.0
+        print('ValueError: could not convert string to float')
+    # avg_metric = metric.get_scores(pred_texts, gold_texts, avg=True)
+    avg_metric = {}
 
     result = {
         'accuracy': accuracy,
