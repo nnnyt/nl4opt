@@ -20,8 +20,18 @@ class DeclarationMappingDataset(LPMappingDataset):
         for doc_id, content in self.data.items():  # TODO verify: is this a list or dict?
             document = content['document']
             order_mapping = content['order_mapping']
+            spans = content['spans']
+            span_document = []
+            old_i = 0
+            for s in spans:
+                span_document.append(document[old_i: s['start']])
+                span_document.append(f"<{s['label']}> ")
+                span_document.append(document[s['start']: s['end']])
+                span_document.append(f" </{s['label']}>")
+                old_i = s['end']
+            span_document = ''.join(span_document)
 
-            orig_input_ids = tokenizer([document], max_length=self.max_length, truncation=True)['input_ids'][0]
+            orig_input_ids = tokenizer([span_document], max_length=self.max_length, truncation=True)['input_ids'][0]
 
             decoder_input_chunks = self.create_decoder_input_chunks(content, tokenizer)
             const_triggers = [START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
@@ -36,7 +46,7 @@ class DeclarationMappingDataset(LPMappingDataset):
                 # Declaration prompt trigger
                 decl_trigger = trigger
                 # TODO: wrap the trigger in <s>TRIGGER</s>
-                # decl_trigger = [tokenizer.bos_token_id] + decoder_input[0] + [tokenizer.eos_token_id]
+                # decl_trigger = [tokenizer.bos_token_id] + decoder_input[0] + [tokenizer.eos_token_id])
                 pad_num = self.max_length - len(decl_trigger) - len(orig_input_ids)
                 attn_mask = [1] * (len(decl_trigger) + len(orig_input_ids)) + [0] * pad_num
                 input_ids = decl_trigger + orig_input_ids + [tokenizer.pad_token_id] * pad_num
