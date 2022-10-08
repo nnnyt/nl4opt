@@ -58,6 +58,18 @@ class Config(object):
         self.use_copy = kwargs.pop('use_copy', False)
         self.k = kwargs.pop('k', 12)
 
+        # attack
+        self.adversarial = {
+            'epsilon': kwargs.pop('epsilon', 1.0),
+            'name': kwargs.pop('adversarial_name', 'fgm'),
+            'emb_name': kwargs.pop('emb_name', 'shared.weight'),
+            'K': kwargs.pop('K', 3), # 步数
+            'alpha': kwargs.pop('alpha', 0.3), # 学习率
+        }
+        self.use_attack = kwargs.pop('use_attack', True)
+        
+        
+
     @classmethod
     def from_dict(cls, dict_obj):
         """Creates a Config object from a dictionary.

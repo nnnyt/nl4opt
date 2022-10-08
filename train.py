@@ -17,6 +17,7 @@ from data_per_declaration import DeclarationMappingDataset
 from constants import *
 from utils import *
 import test_utils
+from attack_utils import FGM, PGD
 
 
 # configuration
@@ -148,6 +149,50 @@ best_epoch = 0
 best_score = 0
 metric = Rouge()
 
+print('================Setting Attack Training================')
+if config.use_attack:
+    assert config.adversarial['name'] in {'', 'fgm', 'pgd', 'vat', 'gradient_penalty'}, 'adversarial_train support fgm, pgd, vat and gradient_penalty mode'
+    if config.adversarial['name'] == 'fgm':
+        ad_train = FGM(model)
+    elif config.adversarial['name'] == 'pgd':
+        ad_train = PGD(model)
+
+
+def adversarial_training(model, batch, optimizer, decoder_input_ids, decoder_labels, tokenizer):
+    '''对抗训练
+    '''
+    if config.adversarial['name'] == 'fgm':
+        ad_train.attack(**config.adversarial) # embedding被修改了
+
+        # attack_output = model(batch, mode="train", use_post=use_post)
+        
+        # attack_loss = attack_output["loss"] / config.accumulate_step
+        attack_loss = model(batch, decoder_input_ids, decoder_labels, tokenizer=tokenizer)['loss']
+        attack_loss = attack_loss / config.accumulate_step
+        attack_loss.backward() # 反向传播，在正常的grad基础上，累加对抗训练的梯度
+        # 恢复Embedding的参数, 因为要在正常的embedding上更新参数，而不是增加了对抗扰动后的embedding上更新参数~
+        ad_train.restore(**config.adversarial)
+    
+    elif config.adversarial['name'] == 'pgd':
+        ad_train.backup_grad()  # 备份梯度
+        for t in range(config.adversarial['K']):
+            # 在embedding上添加对抗扰动, first attack时备份param.data
+            ad_train.attack(**config.adversarial, is_first_attack=(t==0))
+            if t != config.adversarial['K']-1:
+                optimizer.zero_grad()  # 为了累积扰动而不是梯度
+            else:
+                ad_train.restore_grad() # 恢复正常的grad
+            
+            # attack_output = model(batch, mode="train", use_post=use_post)
+
+            # attack_loss = attack_output["loss"] / config.accumulate_step
+            attack_loss = model(batch, decoder_input_ids, decoder_labels, tokenizer=tokenizer)['loss']
+            attack_loss = attack_loss / config.accumulate_step
+            attack_loss.backward() # 反向传播，在正常的grad基础上，累加对抗训练的梯度
+
+        ad_train.restore(**config.adversarial) # 恢复embedding参数
+
+
 print('================Start Training================')
 for epoch in range(config.max_epoch):
 
@@ -173,6 +218,8 @@ for epoch in range(config.max_epoch):
         loss = loss * (1 / config.accumulate_step)
         training_loss += loss.item()
         loss.backward()
+        
+        adversarial_training(model, batch, optimizer, decoder_input_ids, decoder_labels, tokenizer)
 
         train_gold_outputs.extend(decoder_inputs_outputs['decoder_labels'].tolist())
         train_input_ids.extend(decoder_input_ids.tolist())
