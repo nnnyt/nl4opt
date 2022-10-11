@@ -5,7 +5,7 @@ import os
 from transformers import AutoConfig
 
 
-class Config(object):
+class Config_attack(object):
     def __init__(self, **kwargs):
         self.coref = kwargs.pop('coref', False)
         # bert
@@ -57,6 +57,18 @@ class Config(object):
         self.seed = kwargs.pop('seed', 0)
         self.use_copy = kwargs.pop('use_copy', False)
         self.k = kwargs.pop('k', 12)
+
+        # attack
+        self.adversarial = {
+            'epsilon': kwargs.pop('epsilon', 1.0),
+            'name': kwargs.pop('adversarial_name', 'fgm'),
+            'emb_name': kwargs.pop('emb_name', 'shared.weight'),
+            'K': kwargs.pop('K', 3), # 步数
+            'alpha': kwargs.pop('alpha', 0.3), # 学习率
+        }
+        self.use_attack = kwargs.pop('use_attack', True)
+        
+        
 
     @classmethod
     def from_dict(cls, dict_obj):

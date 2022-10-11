@@ -8,7 +8,7 @@ from constants import *
 """ Model for text-to-text mapping using BART with copy mechanism for conditional generation
 
 """
-class TextMappingModel(nn.Module):
+class TextMappingModel_span(nn.Module):
     def __init__(self,
                  config,
                  vocabs):
