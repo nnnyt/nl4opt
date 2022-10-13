@@ -20,6 +20,7 @@ class DeclarationMappingDataset_attack(LPMappingDataset):
         for doc_id, content in self.data.items():  # TODO verify: is this a list or dict?
             document = content['document']
             order_mapping = content['order_mapping']
+            spans = content['spans']
 
             # orig_input_ids = tokenizer([document], max_length=self.max_length, truncation=True)['input_ids'][0]
 
@@ -27,7 +28,29 @@ class DeclarationMappingDataset_attack(LPMappingDataset):
             # const_triggers = [START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
             # obj_triggers = [START_OF_OBJ_DIR + " " + x['text'].strip(" ") + " " + END_OF_OBJ_DIR for x in content['spans'] if x['label'] == 'OBJ_DIR' and 'text' in x]
 
-            const_triggers = [document[:x['start']] + " " + START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR + document[x['end']:] for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
+            sentences_idx = []
+            old_idx = -1
+            while 1:
+                idx = content['document'].find('.', old_idx+1)
+                if idx == -1:
+                    break
+                old_idx = idx
+                sentences_idx.append(idx)
+            const_triggers = []
+            for i, x in enumerate(spans):
+                if x['label'] == 'CONST_DIR' and 'text' in x:
+                    const_triggers.append(document[:x['start']] + " " + START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR + document[x['end']:])
+                    if i + 2 < len(spans):
+                        if spans[i+1]['label'] == 'LIMIT' and spans[i+2]['label'] == 'LIMIT':
+                            flag = 0
+                            for idx in sentences_idx:
+                                if x['end'] <= idx and spans[i+2]['start'] >= idx:
+                                    # 两个句子
+                                    flag = 1
+                            if flag == 0:
+                                const_triggers.append(document[:spans[i+2]['start']] + START_OF_CONST_DIR + " " + x['text'].strip() + " " + END_OF_CONST_DIR + document[spans[i+2]['start']:])
+
+            # const_triggers = [document[:x['start']] + " " + START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR + document[x['end']:] for x in content['spans'] if x['label'] == 'CONST_DIR' and 'text' in x]
             obj_triggers = [document[:x['start']] + " " + START_OF_OBJ_DIR + " " + x['text'].strip(" ") + " " + END_OF_OBJ_DIR + document[x['end']:] for x in content['spans'] if x['label'] == 'OBJ_DIR' and 'text' in x]
             # triggers = [tokenizer.encode(x)[1:-1] for x in obj_triggers + const_triggers]
             triggers = [tokenizer([x], max_length=self.max_length, truncation=True)['input_ids'][0] for x in obj_triggers + const_triggers]
