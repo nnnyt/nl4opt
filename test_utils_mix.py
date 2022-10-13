@@ -3,7 +3,6 @@ import tqdm
 from torch.utils.data import DataLoader
 from utils import *
 from rouge import Rouge
-import test_utils
 
 import parsers
 import scoring
@@ -59,19 +58,6 @@ def collate_score_declarations(pred_texts: List[str],
         pred_canonical = parse_convert(pred, order_mapping)
         pred_canonicals.append(pred_canonical)
         gold_canonicals.append(gold_canonical)
-
-    print('objective accuracy: ', scoring.overall_score(
-        [None for x in pred_canonicals],
-        [x.constraints for x in pred_canonicals],
-        [None for x in gold_canonicals],
-        [x.constraints for x in gold_canonicals],
-    ))
-    print('constraint accuracy: ', scoring.overall_score(
-        [x.objective for x in pred_canonicals],
-        [[] for x in pred_canonicals],
-        [x.objective for x in gold_canonicals],
-        [[] for x in gold_canonicals],
-    ))
 
     return scoring.overall_score(
         [x.objective for x in pred_canonicals],
@@ -193,7 +179,7 @@ def evaluate(tokenizer, tokenizer_c,
                 gold_texts_final.append(gold_texts_c[i])
                 doc_ids_final.append(id)
                 order_mappings_final.append(order_mappings_c[i])
-    print(len(pred_texts_final), len(pred_texts), len(pred_texts_c))
+    # print(len(pred_texts_final), len(pred_texts), len(pred_texts_c))
 
     ######
     accuracy = collate_score_declarations(pred_texts_final, gold_texts_final, doc_ids_final, order_mappings_final, print_errors)

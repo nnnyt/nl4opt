@@ -22,19 +22,13 @@ def per_example_scores(predicted_objective: np.ndarray, predicted_constraints: n
         # check if shape matches and if row a matches with any row in B
         return len(a) > 0 and len(B) > 0 and \
                a.shape[0] == B.shape[1] and (a == B).all(axis=1).any()
-    if predicted_objective is None:
-        d = len(true_constraints)
-    else:
-        d = 1 + len(true_constraints)
-    # d = 1 + len(true_constraints)
+
+    d = 1 + len(true_constraints)
     fp = 0
     fn = max(len(true_constraints) - len(constraints), 0)
 
-    if predicted_objective is not None:
-        if not obj_eq(predicted_objective, true_objective):
-            fp += 1
-    # if not obj_eq(predicted_objective, true_objective):
-    #     fp += 1
+    if not obj_eq(predicted_objective, true_objective):
+        fp += 1
 
     
     # check how many of the predicted constraints match the true constraints
