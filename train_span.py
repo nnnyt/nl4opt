@@ -9,7 +9,7 @@ import tqdm
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AdamW, get_linear_schedule_with_warmup, Adafactor
-from rouge import Rouge
+# from rouge import Rouge
 # from model import TextMappingModel
 from model_span import TextMappingModel_span
 # from config import Config
@@ -41,7 +41,8 @@ if use_gpu and config.gpu_device >= 0:
     torch.cuda.set_device(config.gpu_device)
 
 # output
-timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+# timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+timestamp = '20221018'
 log_dir = os.path.join(config.log_path, timestamp)
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
@@ -149,7 +150,7 @@ best_dev = -np.inf
 current_step = 0
 best_epoch = 0
 best_score = 0
-metric = Rouge()
+# metric = Rouge()
 
 print('================Start Training================')
 for epoch in range(config.max_epoch):

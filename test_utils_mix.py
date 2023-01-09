@@ -1,12 +1,16 @@
-
+import re
+import difflib
+import pickle
+from selectors import EpollSelector
 import tqdm
 from torch.utils.data import DataLoader
 from utils import *
-from rouge import Rouge
 
 import parsers
 import scoring
 from typing import Optional, Dict, List, Tuple
+import os
+
 
 def collate_score_declarations(pred_texts: List[str], 
                                 gold_texts: List[str], 
@@ -67,6 +71,13 @@ def collate_score_declarations(pred_texts: List[str],
     )
 
 
+def similarity(a: str, b: str):
+    a = a.strip().lower()
+    b = b.strip().lower()
+    # ignore spaces with isjunk
+    sm = difflib.SequenceMatcher(isjunk=lambda x: x in " \t", a=a, b=b)
+    return sm.ratio()
+
 
 def evaluate(tokenizer, tokenizer_c, 
                 model, model_c, 
@@ -90,7 +101,7 @@ def evaluate(tokenizer, tokenizer_c,
         progress.update(1)
         outputs = model.predict(batch, tokenizer, epoch=epoch)
         decoder_inputs_outputs = generate_decoder_inputs_outputs(batch, tokenizer, model, use_gpu,
-                                                                 config.max_position_embeddings)
+                                                                config.max_position_embeddings)
         pred_outputs.extend(outputs['decoded_ids'].tolist())
         gold_outputs.extend(decoder_inputs_outputs['decoder_labels'].tolist())
         input_tokens.extend(batch.input_tokens)
@@ -117,7 +128,7 @@ def evaluate(tokenizer, tokenizer_c,
 
     #######
     progress = tqdm.tqdm(total=batch_num, ncols=75,
-                         desc='{} {}'.format(tqdm_descr, ckpt_basename))
+                        desc='{} {}'.format(tqdm_descr, ckpt_basename))
     gold_outputs_c, pred_outputs_c, input_tokens_c, doc_ids_c, documents_c, order_mappings_c = [], [], [], [], [], []
     pred_texts_c, gold_texts_c, gold_pred_pairs_c = [], [], []
 
@@ -126,7 +137,7 @@ def evaluate(tokenizer, tokenizer_c,
         progress.update(1)
         outputs = model_c.predict(batch, tokenizer_c, epoch=epoch)
         decoder_inputs_outputs = generate_decoder_inputs_outputs(batch, tokenizer_c, model_c, use_gpu,
-                                                                 config_c.max_position_embeddings)
+                                                                config_c.max_position_embeddings)
         pred_outputs_c.extend(outputs['decoded_ids'].tolist())
         gold_outputs_c.extend(decoder_inputs_outputs['decoder_labels'].tolist())
         input_tokens_c.extend(batch.input_tokens)
@@ -147,7 +158,7 @@ def evaluate(tokenizer, tokenizer_c,
         })
     progress.close()
 
-    pred_texts_final, gold_texts_final, doc_ids_final, order_mappings_final = [], [], [], []
+    pred_texts_final, gold_texts_final, doc_ids_final, order_mappings_final, documents_final = [], [], [], [], []
     id_to_idx = {}
     for i, id in enumerate(doc_ids):
         if id not in id_to_idx:
@@ -164,22 +175,51 @@ def evaluate(tokenizer, tokenizer_c,
     for id in id_to_idx.keys():
         idx_list = id_to_idx[id]
         idx_list_c = id_to_idx_c[id]
-    
+
         for i in idx_list:
             if 'OBJ_DIR' in pred_texts[i]:    #pred_texts是span-in模型预测出来的
-             
                 pred_texts_final.append(pred_texts[i])
                 gold_texts_final.append(gold_texts[i])
                 doc_ids_final.append(id)
                 order_mappings_final.append(order_mappings[i])
+                documents_final.append(documents[i])
         for i in idx_list_c:
             if 'CONST_DIR' in pred_texts_c[i]:  #pred_texts是attach模型预测出来的
-               
                 pred_texts_final.append(pred_texts_c[i])
                 gold_texts_final.append(gold_texts_c[i])
                 doc_ids_final.append(id)
                 order_mappings_final.append(order_mappings_c[i])
+                documents_final.append(documents_c[i])
     # print(len(pred_texts_final), len(pred_texts), len(pred_texts_c))
+
+    ####
+    # add post-process here!!
+    # rule1: 错误的不等式方向
+    for i, r in enumerate(pred_texts_final):
+        if 'larger' in r or 'must exceed' in r or 'need' in r or '<CONST_DIR> process </CONST_DIR>' in r:
+            pred_texts_final[i] = r.replace('LESS_OR_EQUAL', 'GREATER_OR_EQUAL')
+
+    # rule2: 修正错误的数字
+    for i, r in enumerate(pred_texts_final):
+        doc = documents_final[i]
+        doc_num = re.findall(r"\d+[\.\,]?\d*", doc)
+        for j, n in enumerate(doc_num):
+            if n[-1] == '.' or n[-1] == ',':
+                doc_num[j] = n[:-1]
+        num = re.findall(r"\d+[\.\,]?\d*", r)
+        for j, n in enumerate(num):
+            real_value = eval(n.replace(',', ''))
+            if real_value > 10 and n not in doc_num:
+                best_similarity = 0
+                best_match = None
+                for dn in doc_num:
+                    sim = similarity(dn, n)
+                    if sim > best_similarity:
+                        best_similarity = sim
+                        best_match = dn
+                if best_match:
+                    pred_texts_final[i] = r.replace(n, best_match)
+                    num[j] = best_match
 
     ######
     accuracy = collate_score_declarations(pred_texts_final, gold_texts_final, doc_ids_final, order_mappings_final, print_errors)
@@ -191,8 +231,8 @@ def evaluate(tokenizer, tokenizer_c,
         'pred_outputs': pred_outputs,
         'gold_outputs': gold_outputs,
         'input_tokens': input_tokens,
-        'doc_ids': doc_ids,
-        'documents': documents,
+        'doc_ids': doc_ids_final,
+        'documents': documents_final,
         'pred_texts': pred_texts_final,
         'gold_texts': gold_texts_final,
         'gold_pred_pairs': gold_pred_pairs,

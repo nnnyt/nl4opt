@@ -2,7 +2,6 @@
 import tqdm
 from torch.utils.data import DataLoader
 from utils import *
-from rouge import Rouge
 import test_utils
 
 import parsers
@@ -114,7 +113,11 @@ def evaluate(tokenizer,
             "rouge": diff_metrics
         })
     progress.close()
-    accuracy = collate_score_declarations(pred_texts, gold_texts,doc_ids,order_mappings, print_errors)
+    try:
+        accuracy = collate_score_declarations(pred_texts, gold_texts,doc_ids,order_mappings, print_errors)
+    except Exception as e:
+        print(e)
+        accuracy = 0
     # avg_metric = metric.get_scores(pred_texts, gold_texts, avg=True)
     avg_metric = {}
 

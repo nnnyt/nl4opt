@@ -9,14 +9,14 @@ import tqdm
 import torch
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AdamW, get_linear_schedule_with_warmup, Adafactor
-from rouge import Rouge
+# from rouge import Rouge
 # from model import TextMappingModel
 from model_attack import TextMappingModel_attack
 # from config import Config
 from config_attack import Config_attack
 from data import LPMappingDataset
 # from data_per_declaration import DeclarationMappingDataset
-from data_per_declaration_attack import DeclarationMappingDataset_attack
+from data_per_declaration_attack_train import DeclarationMappingDataset_attack
 from constants import *
 from utils import *
 import test_utils
@@ -42,7 +42,8 @@ if use_gpu and config.gpu_device >= 0:
     torch.cuda.set_device(config.gpu_device)
 
 # output
-timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+# timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+timestamp = '20221018'
 log_dir = os.path.join(config.log_path, timestamp)
 if not os.path.exists(log_dir):
     os.makedirs(log_dir)
@@ -150,7 +151,7 @@ best_dev = -np.inf
 current_step = 0
 best_epoch = 0
 best_score = 0
-metric = Rouge()
+# metric = Rouge()
 
 print('================Setting Attack Training================')
 if config.use_attack:

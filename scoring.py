@@ -29,8 +29,6 @@ def per_example_scores(predicted_objective: np.ndarray, predicted_constraints: n
 
     if not obj_eq(predicted_objective, true_objective):
         fp += 1
-
-    
     # check how many of the predicted constraints match the true constraints
     matches = np.sum([constraint_isin(item, true_constraints) for item in constraints])
     fp += len(constraints) - matches

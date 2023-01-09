@@ -17,6 +17,6 @@ pip install --upgrade --force-reinstall torch torchvision torchaudio --extra-ind
 
 
 # Train
-python train_attack.py --config configs/prompt-in-attack.json
+python train_attack.py --config configs/prompt-in-attack_fix_const_2.json
 
 python train_span.py --config configs/span-in.json

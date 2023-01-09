@@ -42,16 +42,6 @@ class DeclarationMappingDataset_attack(LPMappingDataset):
                     const_triggers.append(document[:x['start']] + " " + START_OF_CONST_DIR + " " + x['text'].strip(" ") + " " + END_OF_CONST_DIR + document[x['end']:])
                     if i + 2 < len(spans):
                         if spans[i+1]['label'] == 'LIMIT' and spans[i+2]['label'] == 'LIMIT':
-                            if i + 3 < len(spans):
-                                # CONST_DIR LIMIT LIMIT CONST_DIR
-                                if spans[i+3]['label'] == 'CONST_DIR':
-                                    flag = 0
-                                    for idx in sentences_idx:
-                                        if x['end'] <= idx and spans[i+3]['start'] >= idx:
-                                            flag = 1
-                                    if flag == 0:
-                                        # 再同一个句子中 不符合规则
-                                        continue
                             flag = 0
                             for idx in sentences_idx:
                                 if x['end'] <= idx and spans[i+2]['start'] >= idx:

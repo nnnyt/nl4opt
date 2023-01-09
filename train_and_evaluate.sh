@@ -15,5 +15,11 @@ echo $(which pip)
 # Upgrade Pytorch for CUDA 11.6
 pip install --upgrade --force-reinstall torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
 
-# Evaluate trained model on test set and print results to "results.out"
-python test_mix.py --gpu 0 --checkpoint checkpoint/span-in-checkpoint.mdl --checkpoint-c checkpoint/prompt-in-attack-fix-checkpoint-2.mdl --test-file test.jsonl
+
+# Train
+python train_attack.py --config configs/prompt-in-attack_fix_const_2.json
+
+python train_span.py --config configs/span-in.json
+
+# Test
+python test_mix.py --gpu 0 --checkpoint ./output/baseline_span/20221018/best-checkpoint.mdl --checkpoint-c ./output/baseline_prompt_in_attack_fix_const_2/20221018/best-checkpoint.mdl --test-file test.jsonl
