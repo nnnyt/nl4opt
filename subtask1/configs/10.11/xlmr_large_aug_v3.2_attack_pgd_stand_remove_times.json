@@ -1,0 +1,40 @@
+{
+    "train": "data/train/train_aug_v3.2.txt",
+    "dev": "data/dev/dev.txt",
+    "test": "data/dev/dev.txt",
+
+    "out_dir": "trained_model/baseline_aug_v3.2",
+    "iob_tagging": "conll",
+
+    "max_instances": 5000,
+    "max_length": 250,
+
+    "encoder_model": "xlm-roberta-large",
+    
+    "model": null,
+
+    "model_name": "xlmr_large_aug_v3.2_attack_pgd_stand_remove_times",
+    "stage": "fit",
+    "prefix": "test",
+
+    "batch_size": 8,
+    "accum_grad_batches":  1,
+    "gpus": 1,
+    "cuda": "cuda:0",
+    "epochs": 50,
+    "lr": 2e-5,
+    "dropout": 0.1,
+
+    "use_num_standardize": false,
+    "use_label_standardize": true,
+    "use_post": false,
+
+    "model_class": "enhance_feat",
+    "use_pos_tag": false,
+    "pos_tag_dict": null,
+    "pos_tag_embed_dim": null,
+    
+    "use_lemma": false,
+
+    "use_attack_method": "pgd"
+}
